@@ -3,10 +3,11 @@ Markowitz mean-variance portfolio optimization.
 Solves for minimum-variance and max-Sharpe weights.
 GPU-accelerated covariance computation via PyTorch when available.
 """
+from dataclasses import dataclass
+
+import cvxpy as cp
 import numpy as np
 import torch
-import cvxpy as cp
-from dataclasses import dataclass
 
 
 @dataclass

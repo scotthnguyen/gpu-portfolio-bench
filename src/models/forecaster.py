@@ -4,6 +4,7 @@ from a rolling window of historical returns.
 
 Full ML lifecycle: data → train → eval → inference → feed into optimizer.
 """
+import csv
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -11,7 +12,7 @@ from pathlib import Path
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader, Dataset
 
 CHECKPOINT_DIR = Path(__file__).parent.parent.parent / "results" / "checkpoints"
 CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
@@ -155,7 +156,6 @@ def train(
     if verbose:
         print(f"\nTraining done in {elapsed:.1f}s on {device}. Best val loss: {best_val:.6f} @ epoch {best_epoch}")
 
-    import csv
     loss_path = CHECKPOINT_DIR.parent / "train_losses.csv"
     with open(loss_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=["epoch", "train_loss", "val_loss"])

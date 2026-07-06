@@ -2,11 +2,13 @@
 End-to-end pipeline: LSTM-predicted returns → Markowitz optimizer.
 This is the "full ML lifecycle" story: train → infer → optimize.
 """
-import numpy as np
 from pathlib import Path
 
+import numpy as np
+import torch
+
 from src.models.forecaster import load_model, predict_next_day
-from src.models.portfolio_opt import build_efficient_frontier, max_sharpe_weights, compute_covariance_gpu
+from src.models.portfolio_opt import compute_covariance_gpu, max_sharpe_weights
 
 CHECKPOINT_PATH = str(Path(__file__).parent.parent.parent / "results" / "checkpoints" / "lstm_best.pt")
 
@@ -23,7 +25,6 @@ def forecast_weights(
 
     Returns a dict with predicted returns and optimal weights.
     """
-    import torch
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
 

@@ -2,11 +2,11 @@
 Streamlit dashboard: GPU vs CPU speedup curves, throughput, efficient frontier.
 Run: streamlit run src/dashboard/app.py
 """
+from pathlib import Path
+
 import pandas as pd
-import plotly.graph_objects as go
 import plotly.express as px
 import streamlit as st
-from pathlib import Path
 
 RESULTS_PATH = Path(__file__).parent.parent.parent / "results" / "benchmark_sweep.csv"
 
