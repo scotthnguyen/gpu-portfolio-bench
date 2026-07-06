@@ -1,0 +1,12 @@
+torch>=2.2.0
+numpy>=1.26.0
+pandas>=2.2.0
+yfinance>=0.2.36
+pyarrow>=15.0.0
+scipy>=1.13.0
+cvxpy>=1.4.0
+streamlit>=1.35.0
+plotly>=5.22.0
+pynvml>=11.5.0
+tqdm>=4.66.0
+pytest>=8.2.0
