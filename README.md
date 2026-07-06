@@ -28,6 +28,11 @@ Built as an internship portfolio project targeting NVIDIA's Financial Services G
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
+# Optional GPU extras (match your CUDA version)
+pip install cupy-cuda12x       # raw CUDA kernel support
+pip install cudf-cu12          # RAPIDS GPU DataFrames
+pip install cuopt-cu12         # NVIDIA cuOPT solver
+
 # Confirm GPU (on a cloud instance)
 python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"
 
@@ -144,4 +149,5 @@ pytest tests/ -v
 | 4 — Streamlit dashboard | ✅ |
 | 5 — Custom CUDA kernel (CuPy) | ✅ |
 | 5 — Slurm + Kubernetes orchestration | ✅ |
-| 5 — RAPIDS cuDF / cuOPT | 🔜 |
+| 5 — RAPIDS cuDF ETL | ✅ |
+| 5 — NVIDIA cuOPT portfolio solver | ✅ |

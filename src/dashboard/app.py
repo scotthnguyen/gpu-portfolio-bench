@@ -36,7 +36,7 @@ with st.sidebar:
     df = df[df["n_assets"].isin(selected_assets)]
 
 # ── Tab layout ────────────────────────────────────────────────────────────────
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["Speedup", "Throughput", "GPU Utilization", "VaR Results", "Forecaster"])
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Speedup", "Throughput", "GPU Utilization", "VaR Results", "Forecaster", "RAPIDS / cuOPT"])
 
 with tab1:
     st.subheader("GPU Speedup vs CPU (by problem size)")
@@ -120,3 +120,50 @@ with tab5:
             st.dataframe(pred_df.sort_values("Predicted daily return", ascending=False).style.format({"Predicted daily return": "{:.5f}", "Annualized (%)": "{:.2f}"}), use_container_width=True)
         except Exception as e:
             st.warning(f"Could not run inference: {e}")
+
+with tab6:
+    st.subheader("RAPIDS cuDF & cuOPT")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("#### cuDF ETL Benchmark")
+        try:
+            from src.data.fetch_rapids import CUDF_AVAILABLE, benchmark_etl
+            if CUDF_AVAILABLE:
+                st.success("cuDF detected — GPU ETL active")
+                with st.spinner("Benchmarking ETL (3 runs each)..."):
+                    timings = benchmark_etl(n_runs=3)
+                st.metric("pandas", f"{timings['pandas_etl_sec']*1000:.1f} ms")
+                st.metric("cuDF", f"{timings['cudf_etl_sec']*1000:.1f} ms", delta=f"{timings['speedup']:.1f}× faster")
+            else:
+                st.info("cuDF not installed. On a GPU instance: `pip install cudf-cu12`")
+                st.caption("cuDF replaces pandas DataFrames with GPU-resident equivalents — same API, GPU throughput.")
+        except Exception as e:
+            st.warning(str(e))
+
+    with col2:
+        st.markdown("#### cuOPT Portfolio Optimizer")
+        try:
+            from src.models.portfolio_cuopt import CUOPT_AVAILABLE, max_sharpe_cuopt
+            if CUOPT_AVAILABLE:
+                st.success("cuOPT detected")
+            else:
+                st.info("cuOPT not installed. On a GPU instance: `pip install cuopt-cu12`")
+                st.caption("cuOPT is NVIDIA's GPU-accelerated optimization solver. Falls back to CVXPY/CLARABEL when unavailable.")
+
+            from src.data.fetch import fetch_prices, compute_log_returns
+            import numpy as np
+            prices = fetch_prices()
+            returns = compute_log_returns(prices).dropna(axis=1)
+            R = returns.iloc[:, :20].to_numpy(dtype=np.float64)
+            mu = R.mean(axis=0) * 252
+            cov = np.cov(R.T) * 252
+            result = max_sharpe_cuopt(mu, cov)
+            st.metric("Solver", result.solver)
+            st.metric("Sharpe ratio", f"{result.sharpe:.3f}")
+            st.metric("Annualized return", f"{result.expected_return*100:.2f}%")
+            st.metric("Annualized vol", f"{result.volatility*100:.2f}%")
+            st.metric("Solve time", f"{result.elapsed_sec*1000:.1f} ms")
+        except Exception as e:
+            st.warning(str(e))
