@@ -1,0 +1,55 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: gpu-portfolio-bench
+  labels:
+    app: gpu-portfolio-bench
+spec:
+  ttlSecondsAfterFinished: 3600
+  backoffLimit: 2
+  template:
+    metadata:
+      labels:
+        app: gpu-portfolio-bench
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: bench
+          image: scotthnguyen/gpu-portfolio-bench:latest
+          args: ["--device", "both"]
+          resources:
+            limits:
+              nvidia.com/gpu: "1"
+              memory: "16Gi"
+              cpu: "4"
+            requests:
+              nvidia.com/gpu: "1"
+              memory: "8Gi"
+              cpu: "2"
+          env:
+            - name: NVIDIA_VISIBLE_DEVICES
+              value: all
+            - name: NVIDIA_DRIVER_CAPABILITIES
+              value: compute,utility
+          volumeMounts:
+            - name: results
+              mountPath: /app/results
+      volumes:
+        - name: results
+          persistentVolumeClaim:
+            claimName: gpu-bench-results-pvc
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gpu-bench-results-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

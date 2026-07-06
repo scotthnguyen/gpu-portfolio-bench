@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gpu-portfolio-dashboard
+  labels:
+    app: gpu-portfolio-dashboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gpu-portfolio-dashboard
+  template:
+    metadata:
+      labels:
+        app: gpu-portfolio-dashboard
+    spec:
+      containers:
+        - name: dashboard
+          image: scotthnguyen/gpu-portfolio-bench:latest
+          command: ["streamlit", "run", "src/dashboard/app.py"]
+          args: ["--server.port=8501", "--server.address=0.0.0.0"]
+          ports:
+            - containerPort: 8501
+          resources:
+            limits:
+              memory: "2Gi"
+              cpu: "1"
+          volumeMounts:
+            - name: results
+              mountPath: /app/results
+              readOnly: true
+      volumes:
+        - name: results
+          persistentVolumeClaim:
+            claimName: gpu-bench-results-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gpu-portfolio-dashboard
+spec:
+  selector:
+    app: gpu-portfolio-dashboard
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8501
+  type: LoadBalancer
