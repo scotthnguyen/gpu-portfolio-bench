@@ -7,8 +7,6 @@ the speedup shows up in the data-prep stage rather than the simulation stage.
 """
 from pathlib import Path
 
-import numpy as np
-
 try:
     import cudf
     import cudf.pandas  # noqa: F401 — activates pandas compatibility layer
@@ -111,7 +109,7 @@ def benchmark_etl(n_runs: int = 5) -> dict:
     import time
 
     # pandas baseline
-    from src.data.fetch import fetch_prices, compute_log_returns
+    from src.data.fetch import compute_log_returns, fetch_prices
     t0 = time.perf_counter()
     for _ in range(n_runs):
         prices_pd = fetch_prices(force_refresh=False)

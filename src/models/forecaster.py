@@ -203,7 +203,8 @@ def predict_next_day(
 
 if __name__ == "__main__":
     import argparse
-    from src.data.fetch import fetch_prices, compute_log_returns
+
+    from src.data.fetch import compute_log_returns, fetch_prices
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--epochs", type=int, default=50)

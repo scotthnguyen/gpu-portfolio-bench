@@ -3,6 +3,7 @@ CPU baseline: Monte Carlo Value-at-Risk and CVaR via NumPy.
 Uses Geometric Brownian Motion to simulate portfolio price paths.
 """
 import time
+
 import numpy as np
 
 

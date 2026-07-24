@@ -36,7 +36,7 @@ with st.sidebar:
     df = df[df["n_assets"].isin(selected_assets)]
 
 # ── Tab layout ────────────────────────────────────────────────────────────────
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Speedup", "Throughput", "GPU Utilization", "VaR Results", "Forecaster", "RAPIDS / cuOPT"])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["Speedup", "Throughput", "GPU Utilization", "VaR Results", "Efficient Frontier", "Forecaster", "RAPIDS / cuOPT"])
 
 with tab1:
     st.subheader("GPU Speedup vs CPU (by problem size)")
@@ -89,6 +89,80 @@ with tab4:
     )
 
 with tab5:
+    st.subheader("Markowitz Efficient Frontier")
+    st.caption("GPU-accelerated covariance (PyTorch) + CVXPY/CLARABEL for QP — traces the risk/return tradeoff across 50 target returns.")
+
+    n_assets_ef = st.slider("Number of assets", min_value=5, max_value=50, value=20, step=5)
+
+    @st.cache_data(show_spinner="Building efficient frontier…")
+    def compute_frontier(n: int) -> dict:
+        import numpy as np
+
+        from src.data.fetch import compute_log_returns, fetch_prices
+        from src.models.portfolio_opt import build_efficient_frontier, max_sharpe_weights
+
+        prices = fetch_prices()
+        returns = compute_log_returns(prices).dropna(axis=1)
+        asset_names = list(returns.columns[:n])
+        R = returns[asset_names].to_numpy(dtype=np.float64)
+        ef = build_efficient_frontier(R, asset_names, n_points=50, use_gpu=False)
+        mu_ann = R.mean(axis=0) * 252
+        cov_ann = np.cov(R.T) * 252
+        ms_w = max_sharpe_weights(mu_ann, cov_ann)
+        ms_ret = float(ms_w @ mu_ann)
+        ms_vol = float(np.sqrt(ms_w @ cov_ann @ ms_w))
+        ms_sr = (ms_ret - 0.05) / ms_vol
+        return {
+            "vols": ef.volatilities,
+            "rets": ef.expected_returns[:len(ef.volatilities)],
+            "sharpes": ef.sharpe_ratios,
+            "ms_ret": ms_ret,
+            "ms_vol": ms_vol,
+            "ms_sr": ms_sr,
+            "ms_weights": ms_w.tolist(),
+            "asset_names": asset_names,
+        }
+
+    try:
+        import numpy as np
+        import pandas as pd
+
+        data = compute_frontier(n_assets_ef)
+        ef_df = pd.DataFrame({
+            "Volatility": data["vols"],
+            "Return": data["rets"],
+            "Sharpe": data["sharpes"],
+        })
+        fig = px.scatter(
+            ef_df, x="Volatility", y="Return", color="Sharpe",
+            color_continuous_scale="Viridis",
+            labels={"Volatility": "Annualized Volatility", "Return": "Annualized Return"},
+            title=f"Efficient Frontier — {n_assets_ef} assets (Markowitz, CVXPY/CLARABEL)",
+        )
+        fig.add_scatter(
+            x=[data["ms_vol"]], y=[data["ms_ret"]],
+            mode="markers", marker=dict(symbol="star", size=16, color="red"),
+            name=f"Max Sharpe ({data['ms_sr']:.2f}×)",
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+        col_a, col_b, col_c = st.columns(3)
+        col_a.metric("Max Sharpe", f"{data['ms_sr']:.3f}")
+        col_b.metric("Expected Return", f"{data['ms_ret']*100:.2f}%")
+        col_c.metric("Volatility", f"{data['ms_vol']*100:.2f}%")
+
+        top_n = 10
+        top_idx = np.argsort(np.array(data["ms_weights"]))[::-1][:top_n]
+        wdf = pd.DataFrame({
+            "Asset": [data["asset_names"][i] for i in top_idx],
+            "Weight (%)": [data["ms_weights"][i] * 100 for i in top_idx],
+        })
+        st.markdown(f"**Top {top_n} holdings (max-Sharpe portfolio)**")
+        st.dataframe(wdf.style.format({"Weight (%)": "{:.2f}"}), use_container_width=True, hide_index=True)
+    except Exception as e:
+        st.warning(f"Could not build frontier: {e}")
+
+with tab6:
     st.subheader("LSTM Return Forecaster")
     ckpt_path = Path(__file__).parent.parent.parent / "results" / "checkpoints" / "lstm_best.pt"
 
@@ -102,26 +176,24 @@ with tab5:
 
         loss_csv = Path(__file__).parent.parent.parent / "results" / "train_losses.csv"
         if loss_csv.exists():
-            import pandas as pd
             ldf = pd.read_csv(loss_csv)
-            fig = px.line(ldf, y=["train_loss", "val_loss"], labels={"index": "Epoch", "value": "MSE Loss"}, title="Training curves")
+            fig = px.line(ldf, x="epoch", y=["train_loss", "val_loss"], labels={"value": "MSE Loss", "variable": ""}, title="Training curves")
             st.plotly_chart(fig, use_container_width=True)
 
         st.markdown("**Predicted next-day returns (annualized %)**")
         try:
-            from src.data.fetch import fetch_prices, compute_log_returns
+            from src.data.fetch import compute_log_returns, fetch_prices
             from src.models.forecaster import load_model, predict_next_day
             prices = fetch_prices()
             returns = compute_log_returns(prices)[ckpt["asset_names"]].dropna().to_numpy(dtype="float32")
             model, _ = load_model(str(ckpt_path), device="cpu")
             pred = predict_next_day(model, returns[-ckpt["window"]:], device="cpu")
-            import pandas as pd
             pred_df = pd.DataFrame({"Asset": ckpt["asset_names"], "Predicted daily return": pred, "Annualized (%)": pred * 252 * 100})
             st.dataframe(pred_df.sort_values("Predicted daily return", ascending=False).style.format({"Predicted daily return": "{:.5f}", "Annualized (%)": "{:.2f}"}), use_container_width=True)
         except Exception as e:
             st.warning(f"Could not run inference: {e}")
 
-with tab6:
+with tab7:
     st.subheader("RAPIDS cuDF & cuOPT")
 
     col1, col2 = st.columns(2)
@@ -152,8 +224,9 @@ with tab6:
                 st.info("cuOPT not installed. On a GPU instance: `pip install cuopt-cu12`")
                 st.caption("cuOPT is NVIDIA's GPU-accelerated optimization solver. Falls back to CVXPY/CLARABEL when unavailable.")
 
-            from src.data.fetch import fetch_prices, compute_log_returns
             import numpy as np
+
+            from src.data.fetch import compute_log_returns, fetch_prices
             prices = fetch_prices()
             returns = compute_log_returns(prices).dropna(axis=1)
             R = returns.iloc[:, :20].to_numpy(dtype=np.float64)

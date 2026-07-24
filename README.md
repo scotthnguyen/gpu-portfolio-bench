@@ -126,13 +126,16 @@ pytest tests/ -v
 
 ## Results
 
-> Fill in after running the full sweep on a GPU instance.
+CPU numbers measured on Apple M-series (Python 3.14, NumPy GBM). GPU columns fill in after running on a cloud instance (T4/A100).
 
-| Config | CPU (paths/s) | PyTorch CUDA (paths/s) | CuPy kernel (paths/s) | Speedup |
-|--------|--------------|----------------------|----------------------|---------|
-| 10 assets, 1M paths | — | — | — | — |
-| 50 assets, 1M paths | — | — | — | — |
-| 100 assets, 10M paths | — | — | — | — |
+| Config | CPU (paths/s) | PyTorch CUDA (paths/s) | CuPy kernel (paths/s) | GPU speedup |
+|--------|:-------------:|:---------------------:|:--------------------:|:-----------:|
+| 10 assets, 10k paths | 12.1M | — | — | — |
+| 10 assets, 1M paths | 9.7M | — | — | — |
+| 10 assets, 10M paths | 11.2M | — | — | — |
+| 50 assets, 10k paths | 3.8M | — | — | — |
+| 50 assets, 1M paths | 4.5M | — | — | — |
+| 50 assets, 10M paths | 1.1M | — | — | — |
 
 ---
 

@@ -25,14 +25,17 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          # CPU-only torch to keep CI fast (no CUDA runner needed)
+          # CPU-only torch first to keep CI fast (no CUDA runner needed)
           pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install -r requirements.txt
+          # Dev tools (kept out of requirements.txt)
+          pip install "pytest>=8.2.0" "ruff>=0.4.0"
+
+      - name: Lint
+        run: ruff check src/ tests/
 
       - name: Run tests (CPU-only, GPU tests auto-skipped)
         run: pytest tests/ -v --tb=short
 
-      - name: Lint
-        run: |
-          pip install ruff
-          ruff check src/ tests/
+      - name: Smoke-test benchmark sweep (quick CPU)
+        run: python -m src.bench.run_sweep --device cpu --quick

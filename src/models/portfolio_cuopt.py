@@ -110,7 +110,7 @@ def min_variance_cvxpy(mu: np.ndarray, cov: np.ndarray) -> OptResult:
 
 
 if __name__ == "__main__":
-    from src.data.fetch import fetch_prices, compute_log_returns
+    from src.data.fetch import compute_log_returns, fetch_prices
 
     prices = fetch_prices()
     returns = compute_log_returns(prices).dropna(axis=1)

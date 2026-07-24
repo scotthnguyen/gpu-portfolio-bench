@@ -3,8 +3,9 @@ GPU-accelerated Monte Carlo VaR via PyTorch.
 Key idea: replace the for-path loop with a single batched tensor op on CUDA.
 """
 import time
-import torch
+
 import numpy as np
+import torch
 
 
 def simulate_gbm_gpu(

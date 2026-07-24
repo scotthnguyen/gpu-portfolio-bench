@@ -2,9 +2,10 @@
 Fetches historical price data via yfinance and caches to Parquet.
 Incremental refresh: only downloads new rows if cache already exists.
 """
+from pathlib import Path
+
 import pandas as pd
 import yfinance as yf
-from pathlib import Path
 
 CACHE_DIR = Path(__file__).parent.parent.parent / "results" / "cache"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)

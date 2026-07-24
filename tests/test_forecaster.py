@@ -5,7 +5,8 @@ Checks model shapes, that training reduces loss, and that inference runs.
 import numpy as np
 import pytest
 import torch
-from src.models.forecaster import ReturnLSTM, ReturnWindowDataset, train, predict_next_day
+
+from src.models.forecaster import ReturnLSTM, ReturnWindowDataset, predict_next_day, train
 
 
 @pytest.fixture

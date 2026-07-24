@@ -4,6 +4,7 @@ These tests run on CPU only so they pass in CI without a GPU.
 """
 import numpy as np
 import pytest
+
 from src.models.var_cpu import compute_var_cvar_cpu
 from src.models.var_gpu import compute_var_cvar_gpu
 

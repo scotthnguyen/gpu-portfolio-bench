@@ -12,16 +12,15 @@ Run:
   python -m src.bench.run_sweep --assets 50            # fix asset count (for Slurm array)
 """
 import argparse
-import csv
 import time
 from pathlib import Path
 
 import numpy as np
 
-from src.data.fetch import fetch_prices, compute_log_returns
+from src.data.fetch import compute_log_returns, fetch_prices
 from src.models.var_cpu import compute_var_cvar_cpu
+from src.models.var_cuda_kernel import CUPY_AVAILABLE, compute_var_cvar_cupy
 from src.models.var_gpu import compute_var_cvar_gpu
-from src.models.var_cuda_kernel import compute_var_cvar_cupy, CUPY_AVAILABLE
 
 try:
     import pynvml
@@ -113,14 +112,22 @@ def run_sweep(
 
 
 def save_results(rows: list[dict]):
+    """Merge new rows into the CSV, keeping the latest run for each (device, n_assets, n_paths)."""
+    import pandas as pd
+
     RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    mode = "a" if RESULTS_PATH.exists() else "w"
-    with open(RESULTS_PATH, mode, newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=FIELDNAMES)
-        if mode == "w":
-            writer.writeheader()
-        writer.writerows(rows)
-    print(f"\nSaved {len(rows)} rows → {RESULTS_PATH}")
+    new_df = pd.DataFrame([{k: r[k] for k in FIELDNAMES if k in r} for r in rows])
+
+    if RESULTS_PATH.exists():
+        existing = pd.read_csv(RESULTS_PATH)
+        combined = pd.concat([existing, new_df], ignore_index=True)
+        # Keep the last run for each unique config
+        combined = combined.drop_duplicates(subset=["device", "n_assets", "n_paths"], keep="last")
+    else:
+        combined = new_df
+
+    combined.to_csv(RESULTS_PATH, index=False)
+    print(f"\nSaved {len(rows)} rows → {RESULTS_PATH} ({len(combined)} total)")
 
 
 if __name__ == "__main__":

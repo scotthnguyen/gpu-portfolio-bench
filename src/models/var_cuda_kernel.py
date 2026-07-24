@@ -6,6 +6,7 @@ The kernel generates one simulated portfolio return per CUDA thread,
 replacing both the Python loop (CPU) and PyTorch's batched matmul (GPU).
 """
 import time
+
 import numpy as np
 
 try:
@@ -59,10 +60,12 @@ void gbm_portfolio_kernel(
 def _compile_kernel():
     if not CUPY_AVAILABLE:
         raise RuntimeError("CuPy not installed. pip install cupy-cuda12x")
+    import os
+    cuda_home = os.environ.get("CUDA_HOME", "/usr/local/cuda")
     return cp.RawKernel(
         _GBM_KERNEL_CODE,
         "gbm_portfolio_kernel",
-        options=("--std=c++14",),
+        options=("--std=c++14", f"-I{cuda_home}/include"),
         backend="nvrtc",
     )
 
@@ -113,8 +116,8 @@ def compute_var_cvar_cupy(
     if not CUPY_AVAILABLE:
         raise RuntimeError("CuPy not available")
 
-    # Warm-up compile
-    _ = simulate_gbm_cupy_kernel(returns[:5], weights[:5] if len(weights) > 5 else weights, n_paths=100, seed=0)
+    # Warm-up to trigger JIT compile before timed region
+    _ = simulate_gbm_cupy_kernel(returns, weights, n_paths=100, seed=0)
 
     t0 = time.perf_counter()
     port_returns = simulate_gbm_cupy_kernel(returns, weights, n_paths, horizon, seed)
